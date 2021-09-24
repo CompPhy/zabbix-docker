@@ -125,7 +125,7 @@ services:
   volumes:
    - /etc/localtime:/etc/localtime:ro
    - /etc/timezone:/etc/timezone:ro
-   - ./Dockerfiles/web-nginx-pgsql/alpine/conf/etc/zabbix:/etc/zabbix:ro
+   - ./Dockerfiles/web-nginx-pgsql/alpine/conf/etc/zabbix:/etc/zabbix
    - /var/lib/docker/volumes/zabbix-web/ssl/nginx:/etc/ssl/nginx:ro
    - /var/lib/docker/volumes/zabbix-web/modules/:/usr/share/zabbix/modules/:ro
    - /var/lib/docker/volumes/zabbix/.ZBX_DB_CA_FILE:/run/secrets/root-ca.pem:ro
