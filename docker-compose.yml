@@ -1,7 +1,42 @@
 version: '3.5'
 services:
+ zabbix-build-base:
+  build:
+   context: ./Dockerfiles/build-base/alpine
+   cache_from:
+    - alpine:3.14
+  image: zabbix-build-base:alpine-local
+
+ zabbix-build-pgsql:
+  build:
+   context: ./Dockerfiles/build-pgsql/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-base:alpine-local
+  image: zabbix-build-pgsql:alpine-local
+  depends_on:
+   - zabbix-build-base
+
+ zabbix-build-mysql:
+  build:
+   context: ./Dockerfiles/build-mysql/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-base:alpine-local
+  image: zabbix-build-mysql:alpine-local
+  depends_on:
+   - zabbix-build-base
+
  zabbix-server:
-  image: zabbix/zabbix-server-pgsql:alpine-trunk
+  build:
+   context: ./Dockerfiles/server-pgsql/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-pgsql:alpine-local
+  image: zabbix-server-pgsql:alpine-local
   ports:
    - "10051:10051"
   volumes:
@@ -39,6 +74,7 @@ services:
    - POSTGRES_PASSWORD
   depends_on:
    - postgres-server
+   - zabbix-build-pgsql
   networks:
    zbx_net_backend:
      aliases:
@@ -63,7 +99,13 @@ services:
    com.zabbix.os: "alpine"
 
  zabbix-proxy-mysql:
-  image: zabbix/zabbix-proxy-mysql:alpine-trunk
+  build:
+   context: ./Dockerfiles/proxy-mysql/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-mysql:alpine-local
+  image: zabbix-proxy-mysql:alpine-local
   profiles:
    - all
   ports:
@@ -102,6 +144,7 @@ services:
    - mysql-server
    - zabbix-java-gateway
    - zabbix-snmptraps
+   - zabbix-build-mysql
   networks:
    zbx_net_backend:
     aliases:
@@ -118,7 +161,13 @@ services:
    com.zabbix.os: "alpine"
 
  zabbix-web-nginx-pgsql:
-  image: zabbix/zabbix-web-nginx-pgsql:alpine-trunk
+  build:
+   context: ./Dockerfiles/web-nginx-pgsql/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-pgsql:alpine-local
+  image: zabbix-web-nginx-pgsql:alpine-local
   ports:
    - "81:8080"
    - "444:8443"
@@ -147,6 +196,7 @@ services:
   depends_on:
    - postgres-server
    - zabbix-server
+   - zabbix-build-pgsql
   healthcheck:
    test: ["CMD", "curl", "-f", "http://localhost:8080/"]
    interval: 10s
@@ -172,7 +222,13 @@ services:
    com.zabbix.os: "alpine"
 
  zabbix-agent:
-  image: zabbix/zabbix-agent:alpine-trunk
+  build:
+   context: ./Dockerfiles/agent/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-pgsql:alpine-local
+  image: zabbix-agent:alpine-local
   profiles:
    - full
    - all
@@ -198,6 +254,8 @@ services:
    - ./env_vars/.env_agent
   privileged: true
   pid: "host"
+  depends_on:
+   - zabbix-build-pgsql
   networks:
    zbx_net_backend:
     aliases:
@@ -212,7 +270,13 @@ services:
    com.zabbix.os: "alpine"
 
  zabbix-java-gateway:
-  image: zabbix/zabbix-java-gateway:alpine-trunk
+  build:
+   context: ./Dockerfiles/java-gateway/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-pgsql:alpine-local
+  image: zabbix-java-gateway:alpine-local
   profiles:
    - full
    - all
@@ -228,6 +292,8 @@ services:
       memory: 256M
   env_file:
    - ./env_vars/.env_java
+  depends_on:
+   - zabbix-build-pgsql
   networks:
    zbx_net_backend:
     aliases:
@@ -241,7 +307,11 @@ services:
    com.zabbix.os: "alpine"
 
  zabbix-snmptraps:
-  image: zabbix/zabbix-snmptraps:alpine-trunk
+  build:
+   context: ./Dockerfiles/snmptraps/alpine
+   cache_from:
+    - alpine:3.14
+  image: zabbix-snmptraps:alpine-local
   profiles:
    - full
    - all
@@ -270,7 +340,13 @@ services:
    com.zabbix.os: "alpine"
 
  zabbix-web-service:
-  image: zabbix/zabbix-web-service:alpine-trunk
+  build:
+   context: ./Dockerfiles/web-service/alpine
+   cache_from:
+    - alpine:3.14
+   args:
+    BUILD_BASE_IMAGE: zabbix-build-pgsql:alpine-local
+  image: zabbix-web-service:alpine-local
   profiles:
    - full
    - all
@@ -290,6 +366,8 @@ services:
       memory: 256M
   env_file:
    - ./env_vars/.env_web_service
+  depends_on:
+   - zabbix-build-pgsql
   networks:
    zbx_net_backend:
     aliases:
@@ -364,7 +442,7 @@ networks:
   zbx_net_frontend:
     driver: bridge
     driver_opts:
-      com.docker.network.enable_ipv6: "true"
+      com.docker.network.enable_ipv6: "false"
     ipam:
       driver: default
       config:
@@ -372,7 +450,7 @@ networks:
   zbx_net_backend:
     driver: bridge
     driver_opts:
-      com.docker.network.enable_ipv6: "true"
+      com.docker.network.enable_ipv6: "false"
     internal: true
     ipam:
       driver: default
