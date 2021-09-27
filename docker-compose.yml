@@ -178,7 +178,7 @@ services:
    - full
    - all
   ports:
-   - "10050:10050"
+   - "10070:10050"
   volumes:
    - /etc/localtime:/etc/localtime:ro
    - /etc/timezone:/etc/timezone:ro
