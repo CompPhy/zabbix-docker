@@ -120,8 +120,8 @@ services:
  zabbix-web-nginx-pgsql:
   image: zabbix/zabbix-web-nginx-pgsql:alpine-trunk
   ports:
-   - "81:8080"
-   - "444:8443"
+   - "800:8080"
+   - "4430:8443"
   volumes:
    - /etc/localtime:/etc/localtime:ro
    - /etc/timezone:/etc/timezone:ro
